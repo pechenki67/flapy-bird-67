@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flappy Bird Pro</title>
+
+  <style>
+    *{
+      box-sizing:border-box;
+      font-family:Arial, sans-serif;
+    }
+
+    body{
+      margin:0;
+      background:#020617;
+      color:#fff;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+    }
+
+    .container{
+      background:#020617;
+      padding:20px 25px;
+      border-radius:15px;
+      text-align:center;
+      box-shadow:0 0 25px #38bdf8;
+    }
+
+    h1{
+      color:#38bdf8;
+      margin-bottom:10px;
+    }
+
+    canvas{
+      background:linear-gradient(#60a5fa,#0ea5e9);
+      border:3px solid #38bdf8;
+      display:block;
+      margin:15px auto;
+    }
+
+    .info{
+      font-size:18px;
+      margin:5px 0;
+    }
+
+    button{
+      width:100%;
+      padding:10px;
+      margin-top:10px;
+      background:#38bdf8;
+      border:none;
+      border-radius:6px;
+      font-size:16px;
+      cursor:pointer;
+    }
+
+    button:hover{
+      background:#0ea5e9;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>FLAPPY BIRD 🐦</h1>
+
+  <div class="info">Очки: <span id="score">0</span></div>
+  <div class="info">Рекорд: <span id="best">0</span></div>
+
+  <canvas id="game" width="320" height="480"></canvas>
+
+  <p>Space / Клік — стрибок</p>
+
+  <button onclick="startGame()">Почати / Заново</button>
+
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let bird;
+let pipes;
+let score;
+let best = localStorage.getItem("best") || 0;
+let gravity = 0.45;
+let jump = -8;
+let speed = 2.5;
+let interval;
+let frame = 0;
+let isGameOver = false;
+
+const scoreEl = document.getElementById("score");
+const bestEl = document.getElementById("best");
+bestEl.innerText = best;
+
+// Запуск гри
+function startGame(){
+
+  bird = {
+    x:60,
+    y:canvas.height/2,
+    r:12,
+    vy:0
+  };
+
+  pipes = [];
+  score = 0;
+  frame = 0;
+  isGameOver = false;
+
+  scoreEl.innerText = score;
+
+  clearInterval(interval);
+  interval = setInterval(update,20);
+}
+
+// Створити трубу
+function newPipe(){
+
+  const gap = 130;
+  const min = 40;
+  const max = canvas.height - gap - min;
+
+  const top = Math.floor(Math.random()*max)+min;
+
+  pipes.push({
+    x:canvas.width,
+    top:top,
+    bottom:top+gap,
+    passed:false
+  });
+}
+
+// Малювання
+function draw(){
+
+  // Фон
+  ctx.fillStyle = "#38bdf8";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Птах
+  ctx.fillStyle = "#fde047";
+  ctx.beginPath();
+  ctx.arc(bird.x,bird.y,bird.r,0,Math.PI*2);
+  ctx.fill();
+
+  // Око
+  ctx.fillStyle="#000";
+  ctx.beginPath();
+  ctx.arc(bird.x+4,bird.y-3,2,0,Math.PI*2);
+  ctx.fill();
+
+  // Труби
+  ctx.fillStyle="#16a34a";
+
+  pipes.forEach(p=>{
+    ctx.fillRect(p.x,0,45,p.top);
+    ctx.fillRect(p.x,p.bottom,45,canvas.height-p.bottom);
+  });
+}
+
+// Логіка гри
+function update(){
+
+  if(isGameOver) return;
+
+  frame++;
+
+  // Фізика птаха
+  bird.vy += gravity;
+  bird.y += bird.vy;
+
+  // Труби
+  if(frame % 90 === 0) newPipe();
+
+  pipes.forEach(p=> p.x -= speed);
+
+  pipes = pipes.filter(p=> p.x > -50);
+
+  // Колізія
+  pipes.forEach(p=>{
+
+    if(
+      bird.x + bird.r > p.x &&
+      bird.x - bird.r < p.x + 45 &&
+      (bird.y - bird.r < p.top || bird.y + bird.r > p.bottom)
+    ){
+      gameOver();
+    }
+
+    if(!p.passed && p.x+45 < bird.x){
+      p.passed = true;
+      score++;
+      scoreEl.innerText = score;
+    }
+  });
+
+  // Межі
+  if(bird.y + bird.r > canvas.height || bird.y - bird.r < 0){
+    gameOver();
+  }
+
+  draw();
+}
+
+// Кінець гри
+function gameOver(){
+
+  isGameOver = true;
+  clearInterval(interval);
+
+  if(score > best){
+    best = score;
+    localStorage.setItem("best",best);
+    bestEl.innerText = best;
+  }
+
+  setTimeout(()=>{
+    alert("Гру закінчено! Очки: " + score);
+  },100);
+}
+
+// Стрибок
+function flap(){
+  if(!isGameOver){
+    bird.vy = jump;
+  }
+}
+
+// Управління
+window.addEventListener("keydown",e=>{
+  if(e.code === "Space") flap();
+});
+
+canvas.addEventListener("click",flap);
+
+// Автостарт
+startGame();
+
+</script>
+
+</body>
+</html>
